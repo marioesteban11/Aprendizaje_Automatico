@@ -1,3 +1,5 @@
+clear all; close all; clc;
+
 global posx_ball;
 global posy_ball;
 global speed_ballx;
@@ -10,8 +12,8 @@ global posinitx_player
 global posinity_player
 global height_player
 global base_player;
-global datos_bola;
-global datos_ia;
+global datos_valor
+global datos_bola_ia
 
 %ancho y alto del escenario
 width_axes = 35;
@@ -51,12 +53,13 @@ while speed_ballx == 0 || speed_bally == 0
     speed_bally = randi([-1,1],1);
 end
 
+%Entrenamiento
 k1 = 0;
 valor = 1;
 bolaValor = 0;
 datos = 100;%200000;
-datos_bola = zeros(1,datos);
-datos_ia = zeros(1,datos);
+datos_bola_ia = zeros(4,datos);
+datos_valor = zeros(2,datos);
 while(true)
     if(bolaValor >posy_ball)
         valor = -1;
@@ -76,20 +79,73 @@ while(true)
     set(ia_player,'position', [posinitx_player,posinity_player,base_player,height_player],'FaceColor','w' )
     set(ball,'position',[posx_ball posy_ball size_ball size_ball]);
 
-    datos_ia(:,k1) = posinity_player;
-    datos_bola(:,k1) = posy_ball;
+    datos_bola_ia(1,k1) = posy_ball;
+    datos_bola_ia(2,k1) = posinity_player;
+    datos_bola_ia(3,k1) = speed_ballx;
+    datos_bola_ia(4,k1) = speed_bally;
+    if valor == -1
+        datos_valor(1,k1) = 0;
+        datos_valor(2,k1) = 1;
+    elseif valor == 0
+        datos_valor(1,k1) = 0;
+        datos_valor(2,k1) = 0;
+    else
+        datos_valor(1,k1) = 1;
+        datos_valor(2,k1) = 0;
+    end
+
     pause(0.2)
 
     if k1 == datos
         break
     end
 end
-net = feedforwardnet(6) 
-net.trainParam.goal = 0.00001;
-net.trainParam.min_grad = 0;
-net.trainParam.max_fail = 25;
+net = patternnet(5) 
+net.trainParam.goal = 0;
+%net.trainParam.min_grad = 0;
+%net.trainParam.max_fail = 25;
 net.trainParam.epochs = 1000;
-net = train(net,datos_ia, datos_bola );
+net = train(net,datos_bola_ia, datos_valor );
+
+%Usando la red neuronal
+%Se resetea el estado del entorno a su estado inicial
+posx_ball = 15;
+posy_ball = 20;
+posinitx_player = 30;
+posinity_player = 15;
+speed_ballx = randi([-1,1],1);
+speed_bally = randi([-1,1],1);
+while speed_ballx == 0 || speed_bally == 0
+    speed_ballx = randi([-1,1],1);
+    speed_bally = randi([-1,1],1);
+end
+time = 0
+valor = 0
+set(ia_player,'position', [posinitx_player,posinity_player,base_player,height_player],'FaceColor','w' )
+set(ball,'position',[posx_ball posy_ball size_ball size_ball]);
+
+%Pong controlado por la red neuronal
+while(time <= 100)
+    time = time+1;
+    p_valor = sim(net,[posy_ball; posinity_player; speed_ballx; speed_bally]);
+    p_valor = round(p_valor)
+    if p_valor(1,1) == 1 && p_valor(2,1) == 0
+        valor = 1
+    elseif p_valor(1,1) == 0 && p_valor(2,1) == 1
+        valor = -1
+    else
+        valor = 0
+    end
+    collision()
+    collision_ia_player()
+    move_ball()
+    move_ia(k1,valor)
+
+    set(ia_player,'position', [posinitx_player,posinity_player,base_player,height_player],'FaceColor','w' )
+    set(ball,'position',[posx_ball posy_ball size_ball size_ball]);
+    pause(0.2)
+end
+
 function move_ball()
 %aumenta la velocidad de la pelota en x e y en 1
     global posx_ball;
@@ -137,7 +193,7 @@ function move_ia(k1,valor)
     global height_axes;
     global height_player;
     
-    if(posinity_player <= 0 && valor == -1)
+    if(posinity_player <= 0 && valor < 0)
        valor = 0;
     %     y(:,k1) = [move_ia];
     else
@@ -145,7 +201,7 @@ function move_ia(k1,valor)
         %posicion que el objeto retorno es una y es la de abajo es por ello que
         %se debe sumar la altura) es mayor que el alto del escenario y este
         %esta subiendo entonces no lo deja subir mas o superara el escenario
-        if((posinity_player+height_player) >= height_axes && valor == 1)
+        if((posinity_player+height_player) >= height_axes && valor > 0)
     %         y(:,k1) = [move_ia];
             valor = 0;
         else
@@ -198,8 +254,5 @@ function collision_ia_player()
                     speed_bally = 1
                  end
             end
-       end
-
-
-
+    end
 end
