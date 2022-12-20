@@ -61,14 +61,14 @@ datos = 20000;
 datos_bola_ia = zeros(4,datos);
 datos_valor = zeros(2,datos);
 while(true)
-    if(bolaValor >posy_ball)
+    if(bolaValor >posy_ball + (size_ball / 2))
         valor = -1;
-        bolaValor = posy_ball;
+        bolaValor = posy_ball + (size_ball / 2);
     end
         
-    if(bolaValor < posy_ball)
+    if(bolaValor < posy_ball + (size_ball / 2))
        valor = 1 ;
-       bolaValor = posy_ball;
+       bolaValor = posy_ball + (size_ball / 2);
     end
     k1 = k1+1;
     collision()
@@ -79,72 +79,67 @@ while(true)
     set(ia_player,'position', [posinitx_player,posinity_player,base_player,height_player],'FaceColor','w' )
     set(ball,'position',[posx_ball posy_ball size_ball size_ball]);
 
-    datos_bola_ia(1,k1) = posy_ball;
-    datos_bola_ia(2,k1) = posinity_player;
+    datos_bola_ia(1,k1) = posy_ball  + (size_ball / 2);
+    datos_bola_ia(2,k1) = posinity_player + (height_player / 2);
     datos_bola_ia(3,k1) = speed_ballx;
     datos_bola_ia(4,k1) = speed_bally;
     if valor == -1
         datos_valor(1,k1) = 0;
-        datos_valor(2,k1) = 1;
-    elseif valor == 0
-        datos_valor(1,k1) = 0;
-        datos_valor(2,k1) = 0;
     else
         datos_valor(1,k1) = 1;
-        datos_valor(2,k1) = 0;
     end
 
-    pause(0.0000002)
+    pause(0.00002)
 
     if k1 == datos
         break
     end
 end
-% net = patternnet(5) 
-% net.trainParam.goal = 0;
-% %net.trainParam.min_grad = 0;
-% %net.trainParam.max_fail = 25;
-% net.trainParam.epochs = 1000;
-% net = train(net,datos_bola_ia, datos_valor );
-% 
-% %Usando la red neuronal
-% %Se resetea el estado del entorno a su estado inicial
-% posx_ball = 15;
-% posy_ball = 20;
-% posinitx_player = 30;
-% posinity_player = 15;
-% speed_ballx = randi([-1,1],1);
-% speed_bally = randi([-1,1],1);
-% while speed_ballx == 0 || speed_bally == 0
-%     speed_ballx = randi([-1,1],1);
-%     speed_bally = randi([-1,1],1);
-% end
-% time = 0
-% valor = 0
-% set(ia_player,'position', [posinitx_player,posinity_player,base_player,height_player],'FaceColor','w' )
-% set(ball,'position',[posx_ball posy_ball size_ball size_ball]);
-% 
-% %Pong controlado por la red neuronal
-% while(time <= 100)
-%     time = time+1;
-%     p_valor = sim(net,[posy_ball; posinity_player; speed_ballx; speed_bally]);
-%     p_valor = round(p_valor)
-%     if p_valor(1,1) == 1 && p_valor(2,1) == 0
-%         valor = 1
-%     elseif p_valor(1,1) == 0 && p_valor(2,1) == 1
-%         valor = -1
-%     else
-%         valor = 0
-%     end
-%     collision()
-%     collision_ia_player()
-%     move_ball()
-%     move_ia(k1,valor)
-% 
-%     set(ia_player,'position', [posinitx_player,posinity_player,base_player,height_player],'FaceColor','w' )
-%     set(ball,'position',[posx_ball posy_ball size_ball size_ball]);
-%     pause(0.2)
-% end
+net_izq = patternnet(5, "trainlm") 
+net_izq.trainParam.goal = 0.05;
+net_izq.trainParam.min_grad = 0;
+net_izq.trainParam.max_fail = 25;
+net_izq.trainParam.epochs = 1000;
+net_izq = train(net_izq,datos_bola_ia, datos_valor );
+
+%Usando la red neuronal
+%Se resetea el estado del entorno a su estado inicial
+posx_ball = 15;
+posy_ball = 20;
+posinitx_player = 5;
+posinity_player = 15;
+speed_ballx = randi([-1,1],1);
+speed_bally = randi([-1,1],1);
+while speed_ballx == 0 || speed_bally == 0
+    speed_ballx = randi([-1,1],1);
+    speed_bally = randi([-1,1],1);
+end
+time = 0
+valor = 0
+set(ia_player,'position', [posinitx_player,posinity_player,base_player,height_player],'FaceColor','w' )
+set(ball,'position',[posx_ball posy_ball size_ball size_ball]);
+
+%Pong controlado por la red neuronal
+while(time <= 1000)
+    time = time+1;
+    p_valor = sim(net_izq,[posy_ball + (size_ball / 2); posinity_player + (height_player / 2); speed_ballx; speed_bally]);
+    p_valor = round(p_valor)
+    if p_valor(1,1) == 1
+        valor = 1
+    elseif p_valor(1,1) == 0
+        valor = -1
+    end
+    collision()
+    collision_ia_player()
+    move_ball()
+    move_ia(k1,valor)
+
+    set(ia_player,'position', [posinitx_player,posinity_player,base_player,height_player],'FaceColor','w' )
+    set(ball,'position',[posx_ball posy_ball size_ball size_ball]);
+    pause(0.2)
+end
+
+save("net_izq.mat", "net_izq");
 
 function move_ball()
 %aumenta la velocidad de la pelota en x e y en 1
